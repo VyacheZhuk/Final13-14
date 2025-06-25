@@ -8,14 +8,12 @@ import (
 	"time"
 )
 
-const DataFormat = "20060102"
-
 func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 	if repeat == "" {
 		return "", errors.New("repeat rule is empty")
 	}
 
-	date, err := time.Parse(DataFormat, dstart)
+	date, err := time.Parse(dateLayout, dstart)
 	if err != nil {
 		return "", errors.New("invalid date format")
 	}
@@ -54,7 +52,7 @@ func calculateDailyRepeat(now, date time.Time, days int) string {
 			break
 		}
 	}
-	return date.Format(DataFormat)
+	return date.Format(dateLayout)
 }
 
 func calculateYearlyRepeat(now, date time.Time) string {
@@ -64,7 +62,7 @@ func calculateYearlyRepeat(now, date time.Time) string {
 			break
 		}
 	}
-	return date.Format(DataFormat)
+	return date.Format(dateLayout)
 }
 
 func afterNow(date, now time.Time) bool {
@@ -86,7 +84,7 @@ func nextDayHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nowTime, err := time.Parse(DataFormat, now)
+	nowTime, err := time.Parse(dateLayout, now)
 	if err != nil {
 		http.Error(w, "Invalid now parameter", http.StatusBadRequest)
 		return
@@ -98,6 +96,8 @@ func nextDayHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(result))
+	if _, err := w.Write([]byte(result)); err != nil {
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		return
+	}
 }

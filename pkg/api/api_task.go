@@ -42,47 +42,38 @@ func handleGetTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func handlePutTask(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		ID      string `json:"id"`
-		Date    string `json:"date"`
-		Title   string `json:"title"`
-		Comment string `json:"comment"`
-		Repeat  string `json:"repeat"`
-	}
+	const dateLayout = "20060102"
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	var task db.Task
+
+	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
 		writeJSON(w, map[string]string{"error": "Неправильный формат данных"}, http.StatusBadRequest)
 		return
 	}
 
-	// Проверка ID
-	if input.ID == "" {
+	if task.ID == 0 {
 		writeJSON(w, map[string]string{"error": "Не указан идентификатор"}, http.StatusBadRequest)
 		return
 	}
 
-	// Проверка даты (формат YYYYMMDD)
-	if len(input.Date) != 8 {
+	if len(task.Date) != len(dateLayout) { // Используем длину константы для проверки
 		writeJSON(w, map[string]string{"error": "Некорректный формат даты"}, http.StatusBadRequest)
 		return
 	}
 
-	// Проверка что дата валидна
-	_, err := time.Parse("20060102", input.Date)
+	_, err := time.Parse(dateLayout, task.Date) // Используем константу для парсинга
 	if err != nil {
 		writeJSON(w, map[string]string{"error": "Некорректная дата"}, http.StatusBadRequest)
 		return
 	}
 
-	// Проверка заголовка
-	if input.Title == "" {
+	if task.Title == "" {
 		writeJSON(w, map[string]string{"error": "Заголовок не может быть пустым"}, http.StatusBadRequest)
 		return
 	}
 
-	// Проверка правила повтора (если указано)
-	if input.Repeat != "" {
-		parts := strings.Fields(input.Repeat)
+	if task.Repeat != "" {
+		parts := strings.Fields(task.Repeat)
 		if len(parts) != 2 {
 			writeJSON(w, map[string]string{"error": "Некорректное правило повтора"}, http.StatusBadRequest)
 			return
@@ -92,20 +83,6 @@ func handlePutTask(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, map[string]string{"error": "Некорректное правило повтора"}, http.StatusBadRequest)
 			return
 		}
-	}
-
-	id, err := strconv.ParseInt(input.ID, 10, 64)
-	if err != nil {
-		writeJSON(w, map[string]string{"error": "Неверный формат идентификатора"}, http.StatusBadRequest)
-		return
-	}
-
-	task := db.Task{
-		ID:      id,
-		Date:    input.Date,
-		Title:   input.Title,
-		Comment: input.Comment,
-		Repeat:  input.Repeat,
 	}
 
 	if err := db.UpdateTask(&task); err != nil {
